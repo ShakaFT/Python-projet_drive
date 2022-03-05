@@ -1,4 +1,3 @@
-from re import A
 import tkinter
 from produit import Produit
 from commande import Commande
