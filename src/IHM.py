@@ -309,11 +309,11 @@ class IHM_commande:
         button_modifier_commande = ttk.Button(self.frame, text="Modifier la commande", command=self.modifier_commande, style="bouton.TButton")
         button_modifier_commande.grid(row=3, column=0, sticky="e", pady=5)
 
-        button_retour_commandes = ttk.Button(self.frame, text="Retour", command=self.retour_commandes, style="bouton.TButton")
-        button_retour_commandes.grid(row=3, column=1, pady=5)
-
         button_annuler_commande = ttk.Button(self.frame, text="Annuler la commande", command=self.annuler_commande, style="bouton.TButton")
-        button_annuler_commande.grid(row=3, column=2, sticky="w", pady=5)
+        button_annuler_commande.grid(row=3, column=1, pady=5)
+
+        button_retour_commandes = ttk.Button(self.frame, text="Retour", command=self.retour_commandes, style="bouton.TButton")
+        button_retour_commandes.grid(row=3, column=2, sticky="w", pady=5)   
 
         #Événements
         self.treeview_commande.bind("<<TreeviewOpen>>", self.remplir_treeview())
@@ -524,6 +524,8 @@ class IHM_passer_commande:
             IHM_passer_commande.commande.ajouter_produit(produit, quantite)
             valeurs = (produit.intitule, produit.prix, quantite, produit.prix*quantite)
             IHM_passer_commande.treeview_commande.insert("", "end", values=valeurs)
+        
+        IHM_passer_commande.set_quantite()
 
     def remplir_treeview_commande():
 
@@ -562,13 +564,20 @@ class IHM_passer_commande:
         if not IHM_passer_commande.commande.finaliser() :
             messagebox.showerror("Erreur", "Une information est incohérente")
             return
-        
-        sauvegarder_commande()
+
+        msg = messagebox.askquestion(f"Valider la commande", "Êtes-vous certain de vouloir valider la commande ?")
+        if msg == "no":
+            return
+
+        sauvegarder_commande(IHM_passer_commande.commande)
         messagebox.showinfo("Youpi !", "Votre commande a bien été ajoutée !")
         IHM_passer_commande.retour_accueil()
 
     def reset_commande():
         
+        msg = messagebox.askquestion(f"Réinitialiser la commande", "Êtes-vous certain de vouloir réinitialiser la commande ?")
+        if msg == "no":
+            return
         IHM_passer_commande.treeview_commande.delete(*IHM_passer_commande.treeview_commande.get_children())
         IHM_passer_commande.commande.vider()
         IHM_passer_commande.listbox_produit.selection_clear(0, 'end')
@@ -585,6 +594,10 @@ class IHM_passer_commande:
 
         if not IHM_passer_commande.commande.finaliser() :
             messagebox.showerror("Erreur", "Une information est incohérente")
+            return
+        
+        msg = messagebox.askquestion(f"Valider la modification", "Êtes-vous certain de vouloir modifier la commande ?")
+        if msg == "no":
             return
             
         sauvegarder_commande_modif(IHM_passer_commande.commande)
