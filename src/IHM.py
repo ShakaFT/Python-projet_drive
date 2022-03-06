@@ -43,6 +43,9 @@ class IHM_connexion:
         button_connexion = ttk.Button(self.frame, text="Se connecter", command=self.connexion)
         button_connexion.grid(row=2, column=0, columnspan=2, pady=10)
 
+        #On centre la fenêtre au milieu de l'écran
+        self.root.geometry(center_window(self.frame))
+
         #En cas de fermeture de la fenêtre
         self.root.protocol("WM_DELETE_WINDOW", self.close)
 
@@ -115,6 +118,9 @@ class IHM_accueil:
         
         button_passer_commande = ttk.Button(self.frame, text="Passer commande", command=self.passer_commande, style="button.TButton")
         button_passer_commande.grid(row=3, column=1, padx=5, pady=5)
+
+        #On centre la fenêtre au milieu de l'écran
+        self.root.geometry(center_window(self.frame))
 
         #En cas de fermeture de la fenêtre
         self.root.protocol("WM_DELETE_WINDOW", self.close)
@@ -208,6 +214,9 @@ class IHM_voir_commande:
         #Événements
         self.treeview_commandes.bind("<<TreeviewOpen>>", self.remplir_treeview())
         self.treeview_commandes.bind("<Double-1>", self.afficher_commande)
+
+        #On centre la fenêtre au milieu de l'écran
+        self.root.geometry(center_window(self.frame))
 
         #En cas de fermeture de la fenêtre
         self.root.protocol("WM_DELETE_WINDOW", self.close)
@@ -317,6 +326,9 @@ class IHM_commande:
         #Événements
         self.treeview_commande.bind("<<TreeviewOpen>>", self.remplir_treeview())
 
+        #On centre la fenêtre au milieu de l'écran
+        self.root.geometry(center_window(self.frame))
+
         #En cas de fermeture de la fenêtre
         self.root.protocol("WM_DELETE_WINDOW", self.retour_commandes)
     
@@ -406,7 +418,7 @@ class IHM_passer_commande:
         style.configure('sous_titre.TLabel', font="Arial 10 bold", background="SkyBlue3")
         style.configure('texte.TLabel', background="SkyBlue3")
         style.configure('treeview.Treeview', background="grey85")
-        style.configure('bouton.TButton', width=10)
+        style.configure('bouton.TButton', width=12)
 
         #Création de la frame principale
         IHM_passer_commande.frame = ttk.Frame(IHM_passer_commande.root, padding="3 3 3 3", style="frame.TFrame")
@@ -480,6 +492,9 @@ class IHM_passer_commande:
 
         button_sauvegarder = ttk.Button(IHM_passer_commande.frame, text="Sauvegarder", command=IHM_passer_commande.sauvegarder_commande, style="bouton.TButton")
         button_sauvegarder.grid(row=3, column=8, sticky="we", padx=2, pady=2)
+
+        #On centre la fenêtre au milieu de l'écran
+        self.root.geometry(center_window(self.frame))
 
         #Événements
         IHM_passer_commande.treeview_commande.bind("<<TreeviewOpen>>", IHM_passer_commande.remplir_treeview_ouverture())
@@ -601,3 +616,12 @@ class IHM_passer_commande:
 
         IHM_passer_commande.frame.destroy()
         IHM_voir_commande(IHM_passer_commande.root, IHM_passer_commande.email_client)
+
+
+def center_window(root:tkinter):
+    
+    root.update()
+    window_width, window_height = root.winfo_width(), root.winfo_height()
+    screen_width,screen_height = root.winfo_screenwidth(), root.winfo_screenheight()
+    center_x, center_y = int(screen_width/2 - window_width / 2), int(screen_height/2 - window_height / 2)
+    return f'{window_width}x{window_height}+{center_x}+{center_y}'
