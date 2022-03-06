@@ -1,22 +1,21 @@
-import tkinter
 from produit import Produit
 from commande import Commande
 from bd import *
-from datetime import date, timedelta
+import tkinter
 from tkinter import *
 from tkinter import messagebox
 from tkinter import ttk
 from tkcalendar import DateEntry
+from datetime import date, timedelta
 
 class IHM_connexion:
 
     def __init__(self, root):
         
-        #Affectation variables
         self.root = root
         self.root.title("Connexion")
 
-        #Création styles
+        #Création des styles
         style = ttk.Style()
         style.configure('frame.TFrame', background="SkyBlue3")
         style.configure('titre.TLabel', font="Arial 12 bold", background="SkyBlue3")
@@ -32,12 +31,12 @@ class IHM_connexion:
         label_titre.grid(row=0, column=0, columnspan=2, padx=100, pady=10)
 
         #---ligne 1
-        label_email = ttk.Label(self.frame, text="email", style="sous_titre.TLabel")
+        label_email = ttk.Label(self.frame, text="Email", style="sous_titre.TLabel")
         label_email.grid(row=1, column=0, sticky="e", padx=5, pady=10)
 
         self.entry_email = Entry(self.frame, bd=4)
         self.entry_email.grid(row=1, column=1, sticky="w", padx=5, pady=10)  
-        self.entry_email.after(1, lambda:self.entry_email.focus_set())
+        self.entry_email.after(1, self.entry_email.focus_set)
 
         #---ligne 2
         button_connexion = ttk.Button(self.frame, text="Se connecter", command=self.connexion)
@@ -51,7 +50,7 @@ class IHM_connexion:
 
     def connexion(self):
 
-        email_client = self.entry_email.get()
+        email_client = self.entry_email.get().replace(" ", "")
         
         if email_client == "":
             messagebox.showerror("email manquant", "Veuillez entrer un email.")
@@ -73,19 +72,18 @@ class IHM_accueil:
     email_client:str
 
     @staticmethod
-    def get_instance(root, email_client=""):
+    def get_instance(root:tkinter, email_client:str=""):
         if not IHM_accueil._is_setup:
             IHM_accueil.email_client = email_client
             IHM_accueil._is_setup = True
         return IHM_accueil(root)
 
-    def __init__(self, root):
+    def __init__(self, root:tkinter):
 
-        #Affectation variables
         self.root = root
         self.root.title("Accueil drive")
     
-        #Création styles
+        #Création des styles
         style = ttk.Style()
         style.configure('frame.TFrame', background="SkyBlue3")
         style.configure('titre.TLabel', font="Arial 12 bold", background="SkyBlue3")
@@ -93,13 +91,13 @@ class IHM_accueil:
         style.configure('button.TButton', width=22)
 
         #Création de la frame principale
-        self.frame = ttk.Frame(self.root, padding="3 3 3 3", style='frame.TFrame')
+        self.frame = ttk.Frame(self.root, padding="5 5 5 5", style='frame.TFrame')
         self.frame.grid(row=0, column=0, stick="nsew")
 
         #Création/Mise en page des Widgets
         #---ligne 0
         button_deconnexion = ttk.Button(self.frame, text="Se déconnecter", command=self.deconnexion)
-        button_deconnexion.grid(row=0, column=1, sticky="e", padx=2, pady=2)
+        button_deconnexion.grid(row=0, column=1, sticky="e", padx=5, pady=2)
 
         #---ligne 1
         label_titre2 = ttk.Label(self.frame, text="Que souhaitez-vous faire ?", style="titre.TLabel")
@@ -123,7 +121,7 @@ class IHM_accueil:
         self.root.geometry(center_window(self.frame))
 
         #En cas de fermeture de la fenêtre
-        self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.root.protocol("WM_DELETE_WINDOW", self.deconnexion)
 
     def deconnexion(self):
 
@@ -145,12 +143,6 @@ class IHM_accueil:
 
         self.frame.destroy()
         IHM_passer_commande.get_instance(self.root, IHM_accueil.email_client)
-    
-    def close(self):
-        
-        self.frame.destroy()
-        IHM_accueil._is_setup = False
-        IHM_connexion(self.root)
 
 
 class IHM_voir_commande:
@@ -618,10 +610,12 @@ class IHM_passer_commande:
         IHM_voir_commande(IHM_passer_commande.root, IHM_passer_commande.email_client)
 
 
-def center_window(root:tkinter):
-    
-    root.update()
-    window_width, window_height = root.winfo_width(), root.winfo_height()
-    screen_width,screen_height = root.winfo_screenwidth(), root.winfo_screenheight()
+def center_window(frame:ttk):
+    """
+    Cette fonction retourne la géométrie nécéssaire pour centrer la fenêtre au milieu de l'écran
+    """
+    frame.update()
+    window_width, window_height = frame.winfo_width(), frame.winfo_height()
+    screen_width,screen_height = frame.winfo_screenwidth(), frame.winfo_screenheight()
     center_x, center_y = int(screen_width/2 - window_width / 2), int(screen_height/2 - window_height / 2)
     return f'{window_width}x{window_height}+{center_x}+{center_y}'
