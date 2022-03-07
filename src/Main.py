@@ -1,7 +1,3 @@
-from IHM import IHM_connexion
-from tkinter import *
+from IHM import App
 
-root = Tk()
-root.resizable(False, False)
-IHM_connexion(root)
-root.mainloop()
+App.launch_app()

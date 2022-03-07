@@ -8,12 +8,51 @@ from tkinter import ttk
 from tkcalendar import DateEntry
 from datetime import date, timedelta
 
+class App:
+
+    _is_setup:bool = False
+    _root:tkinter
+    _mail_client:str
+
+    @staticmethod
+    def launch_app():
+        if not App._is_setup:
+            App._root = root = Tk()
+            App._is_setup = True
+        return App()
+    
+    def __init__(self):
+        App._root.resizable(False, False)
+        IHM_connexion.launch_IHM_connexion()
+        App._root.mainloop()
+    
+    def root():
+        return App._root
+    
+    @property
+    def mail_client():
+        return App._mail_client
+    
+    @mail_client.setter
+    def mail_client(mail_client):
+        App._mail_client = mail_client
+
+
 class IHM_connexion:
 
-    def __init__(self, root):
+    _is_setup = False
+    _root:tkinter
+
+    @staticmethod
+    def launch_IHM_connexion():
+        if not IHM_connexion._is_setup:
+            IHM_connexion._root = App.root()
+            IHM_connexion._is_setup = True
+        return IHM_connexion()
+
+    def __init__(self):
         
-        self.root = root
-        self.root.title("Connexion")
+        IHM_connexion._root.title("Connexion")
 
         #Création des styles
         style = ttk.Style()
@@ -22,7 +61,7 @@ class IHM_connexion:
         style.configure('sous_titre.TLabel', font="Arial 10 bold", background="SkyBlue3")
 
         #Création de la frame principale
-        self.frame = ttk.Frame(self.root, padding="3 3 3 3", style="frame.TFrame")
+        self.frame = ttk.Frame(IHM_connexion._root, padding="3 3 3 3", style="frame.TFrame")
         self.frame.grid(row=0, column=0, stick="nsew")
 
         #Création/Mise en page des Widgets
@@ -43,45 +82,48 @@ class IHM_connexion:
         button_connexion.grid(row=2, column=0, columnspan=2, pady=10)
 
         #On centre la fenêtre au milieu de l'écran
-        self.root.geometry(center_window(self.frame))
+        IHM_connexion._root.geometry(center_window(self.frame))
 
         #En cas de fermeture de la fenêtre
-        self.root.protocol("WM_DELETE_WINDOW", self.close)
+        IHM_connexion._root.protocol("WM_DELETE_WINDOW", self.close)
 
     def connexion(self):
 
-        email_client = self.entry_email.get().replace(" ", "")
+        mail_client = self.entry_email.get().replace(" ", "")
         
-        if email_client == "":
-            messagebox.showerror("email manquant", "Veuillez entrer un email.")
+        if mail_client == "":
+            messagebox.showerror("Email manquant", "Veuillez entrer un email.")
             return
-        elif "@" not in email_client:
-            messagebox.showerror("email invalide", "Veuillez entrer un email valide.")
+        elif "@" not in mail_client:
+            messagebox.showerror("Email invalide", "Veuillez entrer un email valide.")
             return
         
+        App.mail_client = mail_client
         self.frame.destroy()
-        IHM_accueil.get_instance(self.root, email_client)
+        IHM_accueil.launch_IHM_accueil()
         
     def close(self):
 
-        self.root.quit()
+        IHM_connexion._root.quit()
+
 
 class IHM_accueil:
 
     _is_setup = False
-    email_client:str
+    _root:tkinter
+    _mail_client:str
 
     @staticmethod
-    def get_instance(root:tkinter, email_client:str=""):
+    def launch_IHM_accueil():
         if not IHM_accueil._is_setup:
-            IHM_accueil.email_client = email_client
+            IHM_accueil._mail_client = App.mail_client
+            IHM_accueil._root = App.root()
             IHM_accueil._is_setup = True
-        return IHM_accueil(root)
+        return IHM_accueil()
 
-    def __init__(self, root:tkinter):
+    def __init__(self):
 
-        self.root = root
-        self.root.title("Accueil drive")
+        IHM_accueil._root.title("Accueil drive")
     
         #Création des styles
         style = ttk.Style()
@@ -91,7 +133,7 @@ class IHM_accueil:
         style.configure('button.TButton', width=22)
 
         #Création de la frame principale
-        self.frame = ttk.Frame(self.root, padding="5 5 5 5", style='frame.TFrame')
+        self.frame = ttk.Frame(IHM_accueil._root, padding="5 5 5 5", style='frame.TFrame')
         self.frame.grid(row=0, column=0, stick="nsew")
 
         #Création/Mise en page des Widgets
@@ -118,46 +160,47 @@ class IHM_accueil:
         button_passer_commande.grid(row=3, column=1, padx=5, pady=5)
 
         #On centre la fenêtre au milieu de l'écran
-        self.root.geometry(center_window(self.frame))
+        IHM_accueil._root.geometry(center_window(self.frame))
 
         #En cas de fermeture de la fenêtre
-        self.root.protocol("WM_DELETE_WINDOW", self.deconnexion)
+        IHM_accueil._root.protocol("WM_DELETE_WINDOW", self.deconnexion)
 
     def deconnexion(self):
 
+        App.mail_client = ""
         self.frame.destroy()
         IHM_accueil._is_setup = False
-        IHM_connexion(self.root)
+        IHM_passer_commande._is_setup = False
+        IHM_connexion.launch_IHM_connexion()
 
     def voir_commande(self):
         
-        liste_commandes = charger_commande(IHM_accueil.email_client)
+        liste_commandes = charger_commande(IHM_accueil._mail_client)
         if liste_commandes == []:
             messagebox.showerror("Aucune commande", "Vous n'avez aucune commande en cours")
             return
 
         self.frame.destroy()
-        IHM_voir_commande(self.root, IHM_accueil.email_client)
+        IHM_voir_commande()
 
     def passer_commande(self):
 
         self.frame.destroy()
-        IHM_passer_commande.get_instance(self.root, IHM_accueil.email_client)
-
+        IHM_passer_commande.get_instance()
 
 class IHM_voir_commande:
 
-    email_client:str
+    _root:tkinter
+    _mail_client:str
 
-    def __init__(self, root:tkinter, email_client:str):
+    def __init__(self):
 
-        #Création de la fenêtre
-        self.root = root
-        self.root.title("Mes commandes")
+        #Affectation des variables d'instance
+        self._root = App.root()
+        self._root.title("Mes commandes")
+        self._mail_client = App.mail_client
 
-        self.email_client = email_client
-
-        #Création styles
+        #Création des styles
         style = ttk.Style()
         style.theme_use("default")
         style.configure("frame.TFrame", background="SkyBlue3")
@@ -166,7 +209,7 @@ class IHM_voir_commande:
         style.configure('treeview.Treeview', background="grey85")
 
         #Création de la frame principale
-        self.frame = ttk.Frame(self.root, padding="3 3 3 3", style="frame.TFrame")
+        self.frame = ttk.Frame(self._root, padding="3 3 3 3", style="frame.TFrame")
         self.frame.grid(row=0, column=0, stick="nsew")
 
         #Création/Mise en page des Widgets
@@ -181,13 +224,13 @@ class IHM_voir_commande:
         #---Ligne 2
         self.treeview_commandes = ttk.Treeview(self.frame, columns="num_commande date_commande date_retrait nb_produits prix_total",
                                                show="headings", style="treeview.Treeview")
-        
+        #On nomme les headings du treeview
         self.treeview_commandes.heading("num_commande", text="Numéro de commande")
         self.treeview_commandes.heading("date_commande", text="Date de commande")
         self.treeview_commandes.heading("date_retrait", text="Date de retrait")
         self.treeview_commandes.heading("nb_produits", text="Nombre de produits")
         self.treeview_commandes.heading("prix_total", text="Prix total")
-
+        #On centre le contenu du treeview
         self.treeview_commandes.column("num_commande", anchor="center")
         self.treeview_commandes.column("date_commande", anchor="center")
         self.treeview_commandes.column("date_retrait", anchor="center")
@@ -204,18 +247,18 @@ class IHM_voir_commande:
         button_retour_accueil.grid(row=3, column=0, columnspan=2, pady=3)
 
         #Événements
-        self.treeview_commandes.bind("<<TreeviewOpen>>", self.remplir_treeview())
-        self.treeview_commandes.bind("<Double-1>", self.afficher_commande)
+        self.remplir_treeview()
+        self.treeview_commandes.bind("<Double-1>", self.afficher_commande) #double click
 
         #On centre la fenêtre au milieu de l'écran
-        self.root.geometry(center_window(self.frame))
+        self._root.geometry(center_window(self.frame))
 
         #En cas de fermeture de la fenêtre
-        self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self._root.protocol("WM_DELETE_WINDOW", self.retour_accueil)
 
     def remplir_treeview(self):
-
-        liste_commandes = charger_commande(self.email_client)
+        
+        liste_commandes = charger_commande(self._mail_client)
         
         for (id_commande, date_commande, date_retrait) in liste_commandes:
             liste_produits_commande = charger_produits_commande(id_commande)
@@ -227,30 +270,29 @@ class IHM_voir_commande:
 
         info_treeview = self.treeview_commandes.item(self.treeview_commandes.focus())
         self.frame.destroy()
-        IHM_commande(self.root, self.email_client, info_treeview["values"][0]) #2e arg : id_commande
+        IHM_commande(info_treeview["values"][0]) #id_commande
 
     def retour_accueil(self):
 
         self.frame.destroy()
-        IHM_accueil.get_instance(self.root)
-
-    def close(self):
-
-        self.retour_accueil()
+        IHM_accueil.launch_IHM_accueil()
 
 
 class IHM_commande:
 
-    email_client:str
-    id_commande:int
+    _root:tkinter
+    _mail_client:str
+    _id_commande:int
 
-    def __init__(self, root:tkinter, email_client:str, id_commande:int):
+    def __init__(self, id_commande:int):
 
-        #Création de la fenêtre
-        self.root = root
-        self.root.title(f"Commande numéro {id_commande}")
+        #Affectation variables d'instances
+        self._root = App.root()
+        self._root.title(f"Commande numéro {id_commande}")
+        self._mail_client = App.mail_client
+        self._id_commande = id_commande
 
-        #Création styles
+        #Création des styles
         style = ttk.Style()
         style.theme_use("default")
         style.configure('frame.TFrame', background="SkyBlue3")
@@ -259,17 +301,13 @@ class IHM_commande:
         style.configure('treeview.Treeview', background="grey85")
         style.configure('bouton.TButton', width=21)
 
-        #Affectation variables d'instances
-        self.email_client = email_client
-        self.id_commande = id_commande
-
         #Création de la frame principale
-        self.frame = ttk.Frame(self.root, padding="5 5 5 5", style="frame.TFrame")
+        self.frame = ttk.Frame(self._root, padding="5 5 5 5", style="frame.TFrame")
         self.frame.grid(row=0, column=0, stick="nsew")
 
         #Création/Mise en page des Widgets
         #---Ligne 0
-        label_titre = ttk.Label(self.frame, text=f"Commande numéro {self.id_commande}", style="titre.TLabel")
+        label_titre = ttk.Label(self.frame, text=f"Commande numéro {self._id_commande}", style="titre.TLabel")
         label_titre.grid(row=0, column=0, columnspan=3, pady=5)
 
         #---Ligne 1
@@ -286,14 +324,14 @@ class IHM_commande:
         label_prix_total.grid(row=1, column=2, pady=3)
 
         #---Ligne 2
-        self.treeview_commande = ttk.Treeview(self.frame, columns="produit prix_unitaire quantite prix_total",
-                                               show="headings", style="treeview.Treeview")
-        
+        self.treeview_commande = ttk.Treeview(self.frame, columns="produit prix_unitaire quantite prix_total", show="headings",
+                                              style="treeview.Treeview")
+        #On nomme les headings du treeview#On centre le contenu du treeview
         self.treeview_commande.heading("produit", text="Produit")
         self.treeview_commande.heading("prix_unitaire", text="Prix unitaire")
         self.treeview_commande.heading("quantite", text="Quantité")
         self.treeview_commande.heading("prix_total", text="Prix total")
-
+        #On centre le contenu du treeview
         self.treeview_commande.column("produit", anchor="center")
         self.treeview_commande.column("prix_unitaire", anchor="center")
         self.treeview_commande.column("quantite", anchor="center")
@@ -312,22 +350,22 @@ class IHM_commande:
         button_annuler_commande = ttk.Button(self.frame, text="Annuler la commande", command=self.annuler_commande, style="bouton.TButton")
         button_annuler_commande.grid(row=3, column=1, pady=5)
 
-        button_retour_commandes = ttk.Button(self.frame, text="Retour", command=self.retour_commandes, style="bouton.TButton")
+        button_retour_commandes = ttk.Button(self.frame, text="Retour", command=self.retour, style="bouton.TButton")
         button_retour_commandes.grid(row=3, column=2, sticky="w", pady=5)   
 
         #Événements
-        self.treeview_commande.bind("<<TreeviewOpen>>", self.remplir_treeview())
+        self.remplir_treeview()
 
         #On centre la fenêtre au milieu de l'écran
-        self.root.geometry(center_window(self.frame))
+        self._root.geometry(center_window(self.frame))
 
         #En cas de fermeture de la fenêtre
-        self.root.protocol("WM_DELETE_WINDOW", self.retour_commandes)
+        self._root.protocol("WM_DELETE_WINDOW", self.retour)
     
     def remplir_treeview(self):
         
-        (self.date_commande, self.date_retrait) = charger_une_commande(self.id_commande)
-        self.liste_produits_commande = charger_produits_commande(self.id_commande)
+        (date_commande, self.date_retrait) = charger_une_commande(self._id_commande)
+        self.liste_produits_commande = charger_produits_commande(self._id_commande)
         self.prix_total = 0
         
         for (produit, quantite) in self.liste_produits_commande:
@@ -336,73 +374,71 @@ class IHM_commande:
             valeurs = (produit.intitule, produit.prix, quantite, prix_total_produit)
             self.treeview_commande.insert("", "end", values=valeurs)
         
-        self.stringvar_date_commande.set(f"Date de la commande : {self.date_commande.strftime('%d-%m-%Y')}")
+        self.stringvar_date_commande.set(f"Date de la commande : {date_commande.strftime('%d-%m-%Y')}")
         self.stringvar_date_retrait.set(f"Date de retrait : {self.date_retrait.strftime('%d-%m-%Y')}")
         self.stringvar_prix_total.set(f"Prix total : {self.prix_total} euro{'' if self.prix_total <= 1 else 's'}")
     
     def modifier_commande(self):
-
-        msg = messagebox.askquestion(f"Modifier la commande {self.id_commande}", "Souhaitez-vous modifier votre commande ?")
-        if msg == "yes":
-            self.frame.destroy()
-            IHM_passer_commande.get_instance(self.root, self.email_client, 
-                                            (self.id_commande, self.date_retrait, self.prix_total, self.liste_produits_commande))
+        
+        self.frame.destroy()
+        IHM_passer_commande._is_setup = False
+        IHM_passer_commande.launch_IHM_passer_commande( (self._id_commande, self.date_retrait, self.prix_total, self.liste_produits_commande) )
 
     def annuler_commande(self):
         
-        msg = messagebox.askquestion(f"Annuler la commande {self.id_commande}", "Êtes-vous certain de vouloir annuler la commande ?")
+        msg = messagebox.askquestion(f"Annuler la commande {self._id_commande}", "Êtes-vous certain de vouloir annuler votre commande ?")
         if msg == "yes":
-            supprimer_commande(self.id_commande)
+            supprimer_commande(self._id_commande)
             messagebox.showinfo("Annulation réussie", "Votre commande a bien été annulée")
-            self.retour_commandes()
+            self.retour()
 
-    def retour_commandes(self):
+    def retour(self):
         
-        liste_commande = charger_commande(self.email_client)
+        liste_commande = charger_commande(self._mail_client)
         self.frame.destroy()
         if liste_commande == []:
-            IHM_accueil.get_instance(self.root)
+            IHM_accueil.launch_IHM_accueil()
         else:
-            IHM_voir_commande(self.root, self.email_client)
+            IHM_voir_commande()
 
 
 class IHM_passer_commande:
 
-    commande = None
     _instance = None
     _is_setup = False
-    liste_produit:list
+    _root:tkinter
+    _commande:Commande
+    _liste_produit:list
 
     @staticmethod
-    def get_instance(root:tkinter, email_client:str, tuple_commande_modif=None):
+    def launch_IHM_passer_commande(commande:Commande=None):
+        IHM_passer_commande._commande = (Commande() if commande is None else commande)
 
-        if not IHM_passer_commande._is_setup and tuple_commande_modif is None:
-            IHM_passer_commande.commande = Commande()
+        if not IHM_passer_commande._is_setup and commande is None: #passer commande
+            IHM_passer_commande._root = App.root()
+            IHM_passer_commande._liste_produit = charger_liste_produit()
             IHM_passer_commande._is_setup = True
-            IHM_passer_commande._instance = IHM_passer_commande(root, email_client, tuple_commande_modif)
-        elif IHM_passer_commande._is_setup and tuple_commande_modif is None:
-            IHM_passer_commande._instance = IHM_passer_commande(root, email_client, tuple_commande_modif)
+            IHM_passer_commande._commande.mail_client = App.mail_client
+            IHM_passer_commande._instance = IHM_passer_commande()
+
+        elif not IHM_passer_commande._is_setup and commande is not None: #modifier commande 
+            IHM_passer_commande._instance = IHM_passer_commande()
+            
+        elif IHM_passer_commande._is_setup: #passer commande 2e fois mini
+            IHM_passer_commande._instance = IHM_passer_commande()
             IHM_passer_commande.ancienne_commande()
-        
-        if tuple_commande_modif is not None:
-            IHM_passer_commande.commande = Commande()
-            IHM_passer_commande._instance = IHM_passer_commande(root, email_client, tuple_commande_modif)
-            IHM_passer_commande._is_setup = False
 
         return IHM_passer_commande._instance
         
     
-    def __init__(self, root:tkinter, email_client:str, tuple_commande_modif):
+    def __init__(self):
 
         #Affectation variables
-        IHM_passer_commande.root = root
-        IHM_passer_commande.root.title(("Passer une commande" if tuple_commande_modif is None else "Modifier votre commande"))
-        IHM_passer_commande.email_client = email_client
-        IHM_passer_commande.liste_produit = charger_liste_produit()
-        liste_produit_intitule = [p.intitule for p in IHM_passer_commande.liste_produit]
-        IHM_passer_commande.tuple_commande_modif = tuple_commande_modif
+        IHM_passer_commande._root.title(("Passer une commande" if IHM_passer_commande.tuple_commande_modif is None else "Modifier votre commande"))
+        liste_produit_intitule = [produit.intitule for produit in IHM_passer_commande._liste_produit]
+        
 
-        #Création styles
+        #Création des styles
         style = ttk.Style()
         style.theme_use("default")
         style.configure('frame.TFrame', background="SkyBlue3")
@@ -413,7 +449,7 @@ class IHM_passer_commande:
         style.configure('bouton.TButton', width=12)
 
         #Création de la frame principale
-        IHM_passer_commande.frame = ttk.Frame(IHM_passer_commande.root, padding="3 3 3 3", style="frame.TFrame")
+        IHM_passer_commande.frame = ttk.Frame(IHM_passer_commande._root, padding="3 3 3 3", style="frame.TFrame")
         IHM_passer_commande.frame.grid(row=0, column=0, stick="nsew")
 
         #Création/Mise en page des Widgets
@@ -471,7 +507,7 @@ class IHM_passer_commande:
         label_titre_prix_commande = ttk.Label(IHM_passer_commande.frame, text="Prix de la commande :", style="sous_titre.TLabel")
         label_titre_prix_commande.grid(row=3, column=4, sticky="e", padx=2, pady=2)
         IHM_passer_commande.stringvar_prix_commande = \
-            StringVar(value=f"{IHM_passer_commande.commande.prix_total} euro{'' if IHM_passer_commande.commande.prix_total <= 1 else 's'}")
+            StringVar(value=f"{IHM_passer_commande._commande.prix_total} euro{'' if IHM_passer_commande._commande.prix_total <= 1 else 's'}")
         label_prix_commande = ttk.Label(IHM_passer_commande.frame, textvariable=IHM_passer_commande.stringvar_prix_commande, style="texte.TLabel")
         label_prix_commande.grid(row=3, column=5, sticky="w", padx=2, pady=2)
 
@@ -486,7 +522,7 @@ class IHM_passer_commande:
         button_sauvegarder.grid(row=3, column=8, sticky="we", padx=2, pady=2)
 
         #On centre la fenêtre au milieu de l'écran
-        self.root.geometry(center_window(self.frame))
+        self._root.geometry(center_window(self.frame))
 
         #Événements
         IHM_passer_commande.treeview_commande.bind("<<TreeviewOpen>>", IHM_passer_commande.remplir_treeview_ouverture())
@@ -494,22 +530,21 @@ class IHM_passer_commande:
         IHM_passer_commande.listbox_quantite.bind('<<ListboxSelect>>', IHM_passer_commande.inserer_produit)
 
         #En cas de fermeture de la fenêtre
-        IHM_passer_commande.root.protocol("WM_DELETE_WINDOW", IHM_passer_commande.tester_retour)
+        IHM_passer_commande._root.protocol("WM_DELETE_WINDOW", IHM_passer_commande.tester_retour)
 
     def ancienne_commande():
         
-        IHM_passer_commande.dateEntry_date_retrait.set_date(IHM_passer_commande.commande.date_retrait)
+        IHM_passer_commande.dateEntry_date_retrait.set_date(IHM_passer_commande._commande.date_retrait)
         IHM_passer_commande.remplir_treeview_commande()
-
 
     def inserer_produit(*args):
         
         index_produit = IHM_passer_commande.listbox_produit.curselection()[0]
         index_quantite = IHM_passer_commande.listbox_quantite.curselection()[0]
         
-        IHM_passer_commande.commande.ajouter_produit(IHM_passer_commande.liste_produit[index_produit], index_quantite)
+        IHM_passer_commande._commande.ajouter_produit(IHM_passer_commande._liste_produit[index_produit], index_quantite)
         IHM_passer_commande.remplir_treeview_commande()
-        IHM_passer_commande.stringvar_prix_commande.set(f"{IHM_passer_commande.commande.prix_total} euro{'' if IHM_passer_commande.commande.prix_total <= 1 else 's'}")
+        IHM_passer_commande.stringvar_prix_commande.set(f"{IHM_passer_commande._commande.prix_total} euro{'' if IHM_passer_commande._commande.prix_total <= 1 else 's'}")
 
     def remplir_treeview_ouverture(*args):
 
@@ -521,7 +556,7 @@ class IHM_passer_commande:
         IHM_passer_commande.stringvar_prix_commande.set(f"{prix_total} euro{'' if prix_total <= 1 else 's'}")
 
         for (produit, quantite) in liste_produits_commande:
-            IHM_passer_commande.commande.ajouter_produit(produit, quantite)
+            IHM_passer_commande._commande.ajouter_produit(produit, quantite)
             valeurs = (produit.intitule, produit.prix, quantite, produit.prix*quantite)
             IHM_passer_commande.treeview_commande.insert("", "end", values=valeurs)
         
@@ -531,14 +566,14 @@ class IHM_passer_commande:
 
         IHM_passer_commande.treeview_commande.delete(*IHM_passer_commande.treeview_commande.get_children())
         
-        for (produit, quantite) in IHM_passer_commande.commande:
+        for (produit, quantite) in IHM_passer_commande._commande:
             valeurs = (produit.intitule, produit.prix, quantite, produit.prix*quantite)
             IHM_passer_commande.treeview_commande.insert("", "end", values=valeurs)
 
     def set_quantite(*args):
         
         index_produit = IHM_passer_commande.listbox_produit.curselection()[0]
-        produit = IHM_passer_commande.liste_produit[index_produit].intitule
+        produit = IHM_passer_commande._liste_produit[index_produit].intitule
         IHM_passer_commande.listbox_quantite.selection_clear(0, 'end')
 
         for child in IHM_passer_commande.treeview_commande.get_children():
@@ -558,10 +593,9 @@ class IHM_passer_commande:
 
     def sauvegarder_ajout_commande():
 
-        IHM_passer_commande.commande.date_retrait = IHM_passer_commande.dateEntry_date_retrait.get_date()
-        IHM_passer_commande.commande.mail_client = IHM_passer_commande.email_client
+        IHM_passer_commande._commande.date_retrait = IHM_passer_commande.dateEntry_date_retrait.get_date()
 
-        if not IHM_passer_commande.commande.finaliser() :
+        if not IHM_passer_commande._commande.finaliser() :
             messagebox.showerror("Erreur", "Une information est incohérente")
             return
 
@@ -569,8 +603,9 @@ class IHM_passer_commande:
         if msg == "no":
             return
 
-        sauvegarder_commande(IHM_passer_commande.commande)
+        sauvegarder_commande(IHM_passer_commande._commande)
         messagebox.showinfo("Youpi !", "Votre commande a bien été ajoutée !")
+        IHM_passer_commande._is_setup = False
         IHM_passer_commande.retour_accueil()
 
     def reset_commande():
@@ -579,7 +614,7 @@ class IHM_passer_commande:
         if msg == "no":
             return
         IHM_passer_commande.treeview_commande.delete(*IHM_passer_commande.treeview_commande.get_children())
-        IHM_passer_commande.commande.vider()
+        IHM_passer_commande._commande.vider()
         IHM_passer_commande.listbox_produit.selection_clear(0, 'end')
         IHM_passer_commande.listbox_produit.select_set(0)
         IHM_passer_commande.listbox_quantite.selection_clear(0, 'end')
@@ -588,11 +623,10 @@ class IHM_passer_commande:
 
     def sauvegarder_modification_commande():
 
-        IHM_passer_commande.commande.id_commande = IHM_passer_commande.tuple_commande_modif[0]
-        IHM_passer_commande.commande.date_retrait = IHM_passer_commande.dateEntry_date_retrait.get_date()
-        IHM_passer_commande.commande.mail_client = IHM_passer_commande.email_client
+        IHM_passer_commande._commande.id_commande = IHM_passer_commande.tuple_commande_modif[0]
+        IHM_passer_commande._commande.date_retrait = IHM_passer_commande.dateEntry_date_retrait.get_date()
 
-        if not IHM_passer_commande.commande.finaliser() :
+        if not IHM_passer_commande._commande.finaliser() :
             messagebox.showerror("Erreur", "Une information est incohérente")
             return
         
@@ -600,7 +634,7 @@ class IHM_passer_commande:
         if msg == "no":
             return
             
-        sauvegarder_commande_modif(IHM_passer_commande.commande)
+        sauvegarder_commande_modif(IHM_passer_commande._commande)
         messagebox.showinfo("Youpi !", "Votre commande a bien été modifiée !")
         IHM_passer_commande.retour_commande()
 
@@ -613,14 +647,14 @@ class IHM_passer_commande:
 
     def retour_accueil():
         
-        IHM_passer_commande.commande.date_retrait = IHM_passer_commande.dateEntry_date_retrait.get_date()
+        IHM_passer_commande._commande.date_retrait = IHM_passer_commande.dateEntry_date_retrait.get_date()
         IHM_passer_commande.frame.destroy()
-        IHM_accueil.get_instance(IHM_passer_commande.root)
+        IHM_accueil.launch_IHM_accueil()
 
     def retour_commande():
 
         IHM_passer_commande.frame.destroy()
-        IHM_voir_commande(IHM_passer_commande.root, IHM_passer_commande.email_client)
+        IHM_voir_commande()
 
 
 def center_window(frame:ttk):
