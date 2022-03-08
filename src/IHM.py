@@ -175,7 +175,7 @@ class IHM_accueil:
 
     def voir_commande(self):
         
-        liste_commandes = charger_commande(IHM_accueil._mail_client)
+        liste_commandes = charger_liste_commande(IHM_accueil._mail_client)
         if liste_commandes == []:
             messagebox.showerror("Aucune commande", "Vous n'avez aucune commande en cours")
             return
@@ -186,19 +186,20 @@ class IHM_accueil:
     def passer_commande(self):
 
         self.frame.destroy()
-        IHM_passer_commande.get_instance()
+        IHM_passer_commande.launch_IHM_passer_commande()
 
 class IHM_voir_commande:
 
     _root:tkinter
     _mail_client:str
 
-    def __init__(self):
+    def __init__(self, liste_commandes:list=[]):
 
         #Affectation des variables d'instance
         self._root = App.root()
         self._root.title("Mes commandes")
         self._mail_client = App.mail_client
+        self.liste_commandes = liste_commandes
 
         #Création des styles
         style = ttk.Style()
@@ -258,9 +259,10 @@ class IHM_voir_commande:
 
     def remplir_treeview(self):
         
-        liste_commandes = charger_commande(self._mail_client)
+        if self.liste_commandes == []:
+            self.liste_commandes = charger_liste_commande(self._mail_client)
         
-        for (id_commande, date_commande, date_retrait) in liste_commandes:
+        for (id_commande, date_commande, date_retrait) in self.liste_commandes:
             liste_produits_commande = charger_produits_commande(id_commande)
             valeurs = (id_commande, date_commande, date_retrait, len(liste_produits_commande),
                       sum( (produit.prix*quantite for (produit, quantite) in liste_produits_commande) ))
@@ -364,7 +366,7 @@ class IHM_commande:
     
     def remplir_treeview(self):
         
-        (date_commande, self.date_retrait) = charger_une_commande(self._id_commande)
+        (date_commande, self.date_retrait) = charger_commande(self._id_commande)
         self.liste_produits_commande = charger_produits_commande(self._id_commande)
         self.prix_total = 0
         
@@ -382,7 +384,11 @@ class IHM_commande:
         
         self.frame.destroy()
         IHM_passer_commande._is_setup = False
-        IHM_passer_commande.launch_IHM_passer_commande( (self._id_commande, self.date_retrait, self.prix_total, self.liste_produits_commande) )
+        commande = Commande()
+        commande.id_commande, commande.mail_client, commande.date_retrait = self._id_commande, self._mail_client, self.date_retrait
+        for (produit, quantite) in self.liste_produits_commande:
+            commande.ajouter_produit(produit, quantite)
+        IHM_passer_commande.launch_IHM_passer_commande(commande)
 
     def annuler_commande(self):
         
@@ -394,17 +400,16 @@ class IHM_commande:
 
     def retour(self):
         
-        liste_commande = charger_commande(self._mail_client)
+        liste_commande = charger_liste_commande(self._mail_client)
         self.frame.destroy()
         if liste_commande == []:
             IHM_accueil.launch_IHM_accueil()
         else:
-            IHM_voir_commande()
+            IHM_voir_commande(liste_commande)
 
 
 class IHM_passer_commande:
 
-    _instance = None
     _is_setup = False
     _root:tkinter
     _commande:Commande
@@ -412,29 +417,27 @@ class IHM_passer_commande:
 
     @staticmethod
     def launch_IHM_passer_commande(commande:Commande=None):
-        IHM_passer_commande._commande = (Commande() if commande is None else commande)
-
-        if not IHM_passer_commande._is_setup and commande is None: #passer commande
+        
+        if not IHM_passer_commande._is_setup:
             IHM_passer_commande._root = App.root()
             IHM_passer_commande._liste_produit = charger_liste_produit()
-            IHM_passer_commande._is_setup = True
-            IHM_passer_commande._commande.mail_client = App.mail_client
-            IHM_passer_commande._instance = IHM_passer_commande()
 
-        elif not IHM_passer_commande._is_setup and commande is not None: #modifier commande 
-            IHM_passer_commande._instance = IHM_passer_commande()
-            
-        elif IHM_passer_commande._is_setup: #passer commande 2e fois mini
-            IHM_passer_commande._instance = IHM_passer_commande()
-            IHM_passer_commande.ancienne_commande()
+            if commande is None: #passer commande
+                IHM_passer_commande._commande = Commande()
+                IHM_passer_commande._commande.mail_client = App.mail_client
+                IHM_passer_commande._is_setup = True
 
-        return IHM_passer_commande._instance
+            else: #modifier commande 
+                IHM_passer_commande._root = App.root()
+                IHM_passer_commande._commande = commande
+
+        return IHM_passer_commande()
         
     
     def __init__(self):
 
         #Affectation variables
-        IHM_passer_commande._root.title(("Passer une commande" if IHM_passer_commande.tuple_commande_modif is None else "Modifier votre commande"))
+        IHM_passer_commande._root.title(("Passer une commande" if IHM_passer_commande._is_setup is None else "Modifier votre commande"))
         liste_produit_intitule = [produit.intitule for produit in IHM_passer_commande._liste_produit]
         
 
@@ -511,7 +514,7 @@ class IHM_passer_commande:
         label_prix_commande = ttk.Label(IHM_passer_commande.frame, textvariable=IHM_passer_commande.stringvar_prix_commande, style="texte.TLabel")
         label_prix_commande.grid(row=3, column=5, sticky="w", padx=2, pady=2)
 
-        titre_bouton_accueil = ("Retourner à l'accueil" if IHM_passer_commande.tuple_commande_modif is None else "Retour")
+        titre_bouton_accueil = ("Retourner à l'accueil" if IHM_passer_commande._is_setup else "Retour aux commandes")
         button_retour_accueil = ttk.Button(IHM_passer_commande.frame, text=titre_bouton_accueil, command=IHM_passer_commande.tester_retour, style="bouton.TButton")
         button_retour_accueil.grid(row=3, column=6, sticky="we", padx=2, pady=2)
 
@@ -525,50 +528,42 @@ class IHM_passer_commande:
         self._root.geometry(center_window(self.frame))
 
         #Événements
-        IHM_passer_commande.treeview_commande.bind("<<TreeviewOpen>>", IHM_passer_commande.remplir_treeview_ouverture())
+        IHM_passer_commande.remplir_treeview_ouverture()
         IHM_passer_commande.listbox_produit.bind('<<ListboxSelect>>', IHM_passer_commande.set_quantite)
         IHM_passer_commande.listbox_quantite.bind('<<ListboxSelect>>', IHM_passer_commande.inserer_produit)
 
         #En cas de fermeture de la fenêtre
         IHM_passer_commande._root.protocol("WM_DELETE_WINDOW", IHM_passer_commande.tester_retour)
 
-    def ancienne_commande():
+    def remplir_treeview_ouverture(*args):
         
-        IHM_passer_commande.dateEntry_date_retrait.set_date(IHM_passer_commande._commande.date_retrait)
-        IHM_passer_commande.remplir_treeview_commande()
+        #Erreur si c'est la première fois que l'utilisateur veut passer une commande
+        try:
+            IHM_passer_commande.dateEntry_date_retrait.set_date(IHM_passer_commande._commande.date_retrait)
+        except:
+            pass
+
+        IHM_passer_commande.stringvar_prix_commande.set(f"{IHM_passer_commande._commande.prix_total} euro{'' if IHM_passer_commande._commande.prix_total <= 1 else 's'}")
+        for tuple_produit_quantite in IHM_passer_commande._commande:
+            IHM_passer_commande.remplir_treeview_commande(tuple_produit_quantite)
+        IHM_passer_commande.set_quantite()
 
     def inserer_produit(*args):
         
         index_produit = IHM_passer_commande.listbox_produit.curselection()[0]
+        produit = IHM_passer_commande._liste_produit[index_produit]
         index_quantite = IHM_passer_commande.listbox_quantite.curselection()[0]
         
-        IHM_passer_commande._commande.ajouter_produit(IHM_passer_commande._liste_produit[index_produit], index_quantite)
-        IHM_passer_commande.remplir_treeview_commande()
+        IHM_passer_commande._commande.ajouter_produit(produit, index_quantite)
+        IHM_passer_commande.remplir_treeview_commande((produit, index_quantite))
         IHM_passer_commande.stringvar_prix_commande.set(f"{IHM_passer_commande._commande.prix_total} euro{'' if IHM_passer_commande._commande.prix_total <= 1 else 's'}")
 
-    def remplir_treeview_ouverture(*args):
+    def remplir_treeview_commande(tuple_produit_quantite:tuple[Produit,int]):
 
-        if IHM_passer_commande.tuple_commande_modif is None:
-            return
-            
-        _, date_retrait, prix_total, liste_produits_commande = IHM_passer_commande.tuple_commande_modif
-        IHM_passer_commande.dateEntry_date_retrait.set_date(date_retrait)
-        IHM_passer_commande.stringvar_prix_commande.set(f"{prix_total} euro{'' if prix_total <= 1 else 's'}")
-
-        for (produit, quantite) in liste_produits_commande:
-            IHM_passer_commande._commande.ajouter_produit(produit, quantite)
-            valeurs = (produit.intitule, produit.prix, quantite, produit.prix*quantite)
-            IHM_passer_commande.treeview_commande.insert("", "end", values=valeurs)
         
-        IHM_passer_commande.set_quantite()
-
-    def remplir_treeview_commande():
-
-        IHM_passer_commande.treeview_commande.delete(*IHM_passer_commande.treeview_commande.get_children())
-        
-        for (produit, quantite) in IHM_passer_commande._commande:
-            valeurs = (produit.intitule, produit.prix, quantite, produit.prix*quantite)
-            IHM_passer_commande.treeview_commande.insert("", "end", values=valeurs)
+        (produit, quantite) = tuple_produit_quantite
+        valeurs = (produit.intitule, produit.prix, quantite, produit.prix*quantite)
+        IHM_passer_commande.treeview_commande.insert("", "end", values=valeurs)
 
     def set_quantite(*args):
         
@@ -586,33 +581,46 @@ class IHM_passer_commande:
         
     def sauvegarder_commande():
 
-        if IHM_passer_commande.tuple_commande_modif is None:
+        IHM_passer_commande._commande.date_retrait = IHM_passer_commande.dateEntry_date_retrait.get_date()
+
+        if IHM_passer_commande._is_setup:
             IHM_passer_commande.sauvegarder_ajout_commande()
         else:
             IHM_passer_commande.sauvegarder_modification_commande()
 
     def sauvegarder_ajout_commande():
 
-        IHM_passer_commande._commande.date_retrait = IHM_passer_commande.dateEntry_date_retrait.get_date()
-
-        if not IHM_passer_commande._commande.finaliser() :
-            messagebox.showerror("Erreur", "Une information est incohérente")
+        if not IHM_passer_commande._commande.finaliser():
             return
-
+            
         msg = messagebox.askquestion(f"Valider la commande", "Êtes-vous certain de vouloir valider la commande ?")
         if msg == "no":
             return
 
-        sauvegarder_commande(IHM_passer_commande._commande)
+        sauvegarder_ajout_commande(IHM_passer_commande._commande)
         messagebox.showinfo("Youpi !", "Votre commande a bien été ajoutée !")
         IHM_passer_commande._is_setup = False
         IHM_passer_commande.retour_accueil()
+    
+    def sauvegarder_modification_commande():
+
+        if not IHM_passer_commande._commande.finaliser():
+            return
+
+        msg = messagebox.askquestion(f"Valider la modification", "Êtes-vous certain de vouloir modifier la commande ?")
+        if msg == "no":
+            return
+            
+        sauvegarder_modification_commande(IHM_passer_commande._commande)
+        messagebox.showinfo("Youpi !", "Votre commande a bien été modifiée !")
+        IHM_passer_commande.retour_commande()
 
     def reset_commande():
         
         msg = messagebox.askquestion(f"Réinitialiser la commande", "Êtes-vous certain de vouloir réinitialiser la commande ?")
         if msg == "no":
             return
+            
         IHM_passer_commande.treeview_commande.delete(*IHM_passer_commande.treeview_commande.get_children())
         IHM_passer_commande._commande.vider()
         IHM_passer_commande.listbox_produit.selection_clear(0, 'end')
@@ -621,26 +629,9 @@ class IHM_passer_commande:
         IHM_passer_commande.listbox_quantite.select_set(0)
         IHM_passer_commande.stringvar_prix_commande.set("0 euro")
 
-    def sauvegarder_modification_commande():
-
-        IHM_passer_commande._commande.id_commande = IHM_passer_commande.tuple_commande_modif[0]
-        IHM_passer_commande._commande.date_retrait = IHM_passer_commande.dateEntry_date_retrait.get_date()
-
-        if not IHM_passer_commande._commande.finaliser() :
-            messagebox.showerror("Erreur", "Une information est incohérente")
-            return
-        
-        msg = messagebox.askquestion(f"Valider la modification", "Êtes-vous certain de vouloir modifier la commande ?")
-        if msg == "no":
-            return
-            
-        sauvegarder_commande_modif(IHM_passer_commande._commande)
-        messagebox.showinfo("Youpi !", "Votre commande a bien été modifiée !")
-        IHM_passer_commande.retour_commande()
-
     def tester_retour():
 
-        if IHM_passer_commande.tuple_commande_modif is None:
+        if IHM_passer_commande._is_setup:
             IHM_passer_commande.retour_accueil()
         else:
             IHM_passer_commande.retour_commande()

@@ -3,11 +3,10 @@
 @author: aclute & shaka
 """
 
-from datetime import date, datetime
-from types import NoneType
-from typing import Generator
-
 from produit import Produit
+from datetime import date, datetime
+from typing import Generator
+from tkinter import messagebox
 
 class Commande:
     """ Cette classe modélise la notion de commande dans un supermarché.
@@ -77,23 +76,26 @@ class Commande:
         return self._date_commande
     
     def finaliser(self) -> bool:
-        """ cette méthode finalise une commande.
-        A appeler avant une insertion de la commande dans la base de données.
+        """ cette méthode vérifie une commande.
+        À appeler avant une insertion de la commande dans la base de données.
         Elle vérifie que la date de retrait est fixée et est postérieure à la date actuelle,
-        que le mail client existe et est de longueur différente de 0,
-        et enfin que la commande contient au moins un produit.
+        et que la commande contient au moins un produit.
         
         La date de la commande est alors fixée à la datetime actuelle.
         
-        :return: True si tout est OK (et la date de commande a été fixée), False sinon
+        Elle renvoie des messages d'erreurs en cas de problème
         """
         auj = datetime.today().date()
-        if self._date_retrait > auj and "@" in self._mail_client and len(self._produit_quantite) >= 1:
-            self._date_commande = auj.strftime("%Y-%m-%d")
-            self._date_retrait = self._date_retrait.strftime("%Y-%m-%d")
-            return True
-        else:
-            return False
+        if self._date_retrait <= auj:
+            messagebox.showerror("Commande incomplète","La date de retrait doit être supérieure à aujourd'hui.")
+            return
+        elif len(self._produit_quantite) == 0:
+            messagebox.showerror("Erreur","Vous devez choisir au moins un produit.")
+            return
+        
+        self._date_commande = auj.strftime("%Y-%m-%d")
+        self._date_retrait = self._date_retrait.strftime("%Y-%m-%d")
+        return True
     
     @property
     def date_retrait(self) -> date:

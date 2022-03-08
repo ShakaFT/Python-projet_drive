@@ -4,7 +4,6 @@
 """
 import mysql.connector as m
 from mysql.connector import errorcode
-
 from produit import Produit
 from commande import Commande
 
@@ -14,15 +13,15 @@ def creer_connexion(): #-> connexion
         connexion = m.connect(host="devbdd.iutmetz.univ-lorraine.fr", user="tornicel3u_appli", password="32016359", database="tornicel3u_Drive")
     except m.Error as err:
         
-        if err.errno == m.errorcode.ER_ACCESS_DENIED_ERROR:
+        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
             print("Erreur: login ou mot de passe incorrect")
-            return None
-        elif err.errno == m.errorcode.ER_BAD_DB_ERROR:
+            return
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
             print("Erreur: la base de données n'existe pas")
-            return None
+            return
         else:
             print(err)
-            return None
+            return
     
     return connexion
 
@@ -36,16 +35,17 @@ def charger_liste_produit() -> list[Produit]: #[(idProduit1, intitule1, prix1), 
 
     return ([Produit(t[0], t[1], t[2]) for t in liste_produit])
 
-def charger_une_commande(id_commande):
+def charger_commande(id_commande):
     connexion = creer_connexion()
     curseur = connexion.cursor()
     curseur.execute(f"SELECT dateCommande, dateRetrait FROM commande WHERE idCommande = {id_commande};")
     commande = curseur.fetchone()
     curseur.close()
     connexion.close()
+    
     return commande
 
-def charger_commande(email_client):
+def charger_liste_commande(email_client):
     connexion = creer_connexion()
     curseur = connexion.cursor()
     requete = f"""
@@ -77,34 +77,31 @@ def charger_produits_commande(id_commande):
 
     return ([(Produit(t[0], t[1], t[2]), t[3]) for t in liste_produit_commande])
 
-def sauvegarder_commande(commande:Commande) -> None:
+def sauvegarder_ajout_commande(commande:Commande) -> None:
     connexion = creer_connexion()
     curseur = connexion.cursor()
-    requete_commande = f"INSERT INTO commande(dateCommande, dateRetrait, mailClient) VALUES{(commande.date_commande, commande.date_retrait, commande.mail_client)};"
+    requete_commande = f"""INSERT INTO commande(dateCommande, dateRetrait, mailClient)
+                           VALUES{(commande.date_commande, commande.date_retrait, commande.mail_client)};"""
     curseur.execute(requete_commande)
-    id_commande = curseur.lastrowid
+    commande.id_commande = curseur.lastrowid
 
-    for (produit, quantite) in commande:
-
-        requete_contient = f"INSERT INTO contient(idProduit, idCommande, quantite) VALUES{(produit.id_produit, id_commande, quantite)};"
-        curseur.execute(requete_contient)
+    remplir_contient(connexion, commande)
 
     connexion.commit()
     curseur.close()
     connexion.close()
 
-def sauvegarder_commande_modif(commande:Commande):
+def sauvegarder_modification_commande(commande:Commande):
 
     connexion = creer_connexion()
     curseur = connexion.cursor()
+
+    curseur.execute(f"""UPDATE commande SET dateCommande = '{commande.date_commande}', dateRetrait = '{commande.date_retrait}' 
+                        WHERE idCommande = {commande.id_commande};""")
+
     curseur.execute(f"DELETE FROM contient WHERE idCommande = {commande.id_commande};")
 
-    for (produit, quantite) in commande:
-
-        requete_contient = f"INSERT INTO contient(idProduit, idCommande, quantite) VALUES{(produit.id_produit, commande.id_commande, quantite)};"
-        curseur.execute(requete_contient)
-
-    curseur.execute(f"UPDATE commande SET dateCommande = '{commande.date_commande}', dateRetrait = '{commande.date_retrait}' WHERE idCommande = {commande.id_commande};")
+    remplir_contient(connexion, commande)    
     
     connexion.commit()
     curseur.close()
@@ -119,3 +116,13 @@ def supprimer_commande(id_commande:int):
     connexion.commit()
     curseur.close()
     connexion.close()
+
+def remplir_contient(connexion, commande:Commande):
+
+    curseur = connexion.cursor()
+    for (produit, quantite) in commande:
+        requete = f"""INSERT INTO contient(idProduit, idCommande, quantite)
+                      VALUES{(produit.id_produit, commande.id_commande, quantite)};"""
+        curseur.execute(requete)
+    connexion.commit()
+    curseur.close()
