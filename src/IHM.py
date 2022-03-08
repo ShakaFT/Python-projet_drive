@@ -7,6 +7,7 @@ from tkinter import messagebox
 from tkinter import ttk
 from tkcalendar import DateEntry
 from datetime import date, timedelta
+from operator import itemgetter
 
 class App:
 
@@ -438,8 +439,7 @@ class IHM_passer_commande:
 
         #Affectation variables
         IHM_passer_commande._root.title(("Passer une commande" if IHM_passer_commande._is_setup is None else "Modifier votre commande"))
-        liste_produit_intitule = [produit.intitule for produit in IHM_passer_commande._liste_produit]
-        
+        IHM_passer_commande.liste_produit_intitule = [produit.intitule for produit in IHM_passer_commande._liste_produit]
 
         #Création des styles
         style = ttk.Style()
@@ -457,11 +457,17 @@ class IHM_passer_commande:
 
         #Création/Mise en page des Widgets
         #---Ligne 0
+        label_search_bar = ttk.Label(IHM_passer_commande.frame, text="Rechercher", style="sous_titre.TLabel")
+        label_search_bar.grid(row=0, column=0, padx=2, pady=2)
+
+        IHM_passer_commande.entry_search_bar = Entry(IHM_passer_commande.frame)
+        IHM_passer_commande.entry_search_bar.grid(row=0, column=1, sticky="w", padx=2, pady=2)
+
         label_date_retrait = ttk.Label(IHM_passer_commande.frame, text="Date de retrait", style="sous_titre.TLabel")
-        label_date_retrait.grid(row=0, column=0, sticky="w", padx=2, pady=2)
+        label_date_retrait.grid(row=0, column=2, columnspan=2, padx=2, pady=2)
 
         IHM_passer_commande.dateEntry_date_retrait = DateEntry(IHM_passer_commande.frame)
-        IHM_passer_commande.dateEntry_date_retrait.grid(row=0, column=1, sticky="ew", padx=2, pady=2)
+        IHM_passer_commande.dateEntry_date_retrait.grid(row=0, column=4, sticky="ew", padx=2, pady=2)
         IHM_passer_commande.dateEntry_date_retrait.set_date(date.today()+timedelta(days=1))
 
         #---Ligne 1
@@ -475,7 +481,7 @@ class IHM_passer_commande:
         label_commande.grid(row=1, column=4, columnspan=5, pady=5)
 
         #---Ligne 2
-        stringVar_liste_produit = StringVar(value=liste_produit_intitule)
+        stringVar_liste_produit = StringVar(value=IHM_passer_commande.liste_produit_intitule)
         IHM_passer_commande.listbox_produit = Listbox(IHM_passer_commande.frame, selectmode=SINGLE, exportselection=False, listvariable=stringVar_liste_produit)
         IHM_passer_commande.listbox_produit.select_set(0)
         IHM_passer_commande.listbox_produit.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=2, pady=2)
@@ -529,11 +535,31 @@ class IHM_passer_commande:
 
         #Événements
         IHM_passer_commande.remplir_treeview_ouverture()
+        IHM_passer_commande.entry_search_bar.bind("<KeyRelease>", self.check)
         IHM_passer_commande.listbox_produit.bind('<<ListboxSelect>>', IHM_passer_commande.set_quantite)
         IHM_passer_commande.listbox_quantite.bind('<<ListboxSelect>>', IHM_passer_commande.inserer_produit)
 
         #En cas de fermeture de la fenêtre
         IHM_passer_commande._root.protocol("WM_DELETE_WINDOW", IHM_passer_commande.tester_retour)
+    
+    def check(*args):
+        
+        valeur = IHM_passer_commande.entry_search_bar.get()
+
+        if valeur == "":
+            donnees = IHM_passer_commande.liste_produit_intitule
+        else:
+            donnees = []
+            for produit_intitule in IHM_passer_commande.liste_produit_intitule:
+                if valeur.lower() in produit_intitule.lower():
+                    donnees.append(produit_intitule)
+        IHM_passer_commande.update(donnees)
+
+    def update(donnees):
+            IHM_passer_commande.listbox_produit.delete(0,END)
+
+            for produit_intitule in donnees:
+                IHM_passer_commande.listbox_produit.insert(END, produit_intitule)
 
     def remplir_treeview_ouverture(*args):
         
@@ -544,26 +570,30 @@ class IHM_passer_commande:
             pass
 
         IHM_passer_commande.stringvar_prix_commande.set(f"{IHM_passer_commande._commande.prix_total} euro{'' if IHM_passer_commande._commande.prix_total <= 1 else 's'}")
-        for tuple_produit_quantite in IHM_passer_commande._commande:
-            IHM_passer_commande.remplir_treeview_commande(tuple_produit_quantite)
+        IHM_passer_commande.remplir_treeview_commande()
         IHM_passer_commande.set_quantite()
 
     def inserer_produit(*args):
-        
-        index_produit = IHM_passer_commande.listbox_produit.curselection()[0]
+
+        produit_intitule = IHM_passer_commande.listbox_produit.get(ACTIVE)
+        index_produit = IHM_passer_commande.liste_produit_intitule.index(produit_intitule)
         produit = IHM_passer_commande._liste_produit[index_produit]
-        index_quantite = IHM_passer_commande.listbox_quantite.curselection()[0]
+        quantite = IHM_passer_commande.listbox_quantite.curselection()[0]
         
-        IHM_passer_commande._commande.ajouter_produit(produit, index_quantite)
-        IHM_passer_commande.remplir_treeview_commande((produit, index_quantite))
+        IHM_passer_commande._commande.ajouter_produit(produit, quantite)
+        
+        IHM_passer_commande.remplir_treeview_commande()
         IHM_passer_commande.stringvar_prix_commande.set(f"{IHM_passer_commande._commande.prix_total} euro{'' if IHM_passer_commande._commande.prix_total <= 1 else 's'}")
 
-    def remplir_treeview_commande(tuple_produit_quantite:tuple[Produit,int]):
+    def remplir_treeview_commande():
 
+        IHM_passer_commande.treeview_commande.delete(*IHM_passer_commande.treeview_commande.get_children())
         
-        (produit, quantite) = tuple_produit_quantite
-        valeurs = (produit.intitule, produit.prix, quantite, produit.prix*quantite)
-        IHM_passer_commande.treeview_commande.insert("", "end", values=valeurs)
+        for (produit, quantite) in sorted([(produit, quantite) for (produit, quantite) in IHM_passer_commande._commande], \
+                                            key=lambda t: t[0].intitule):
+            valeurs = (produit.intitule, produit.prix,
+                       quantite, produit.prix*quantite)
+            IHM_passer_commande.treeview_commande.insert("", "end", values=valeurs)
 
     def set_quantite(*args):
         
@@ -592,7 +622,7 @@ class IHM_passer_commande:
 
         if not IHM_passer_commande._commande.finaliser():
             return
-            
+
         msg = messagebox.askquestion(f"Valider la commande", "Êtes-vous certain de vouloir valider la commande ?")
         if msg == "no":
             return
@@ -643,7 +673,7 @@ class IHM_passer_commande:
         IHM_accueil.launch_IHM_accueil()
 
     def retour_commande():
-
+        
         IHM_passer_commande.frame.destroy()
         IHM_voir_commande()
 
