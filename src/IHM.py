@@ -6,8 +6,9 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter import ttk
 from tkcalendar import DateEntry
+import smtplib
+import ssl
 from datetime import date, timedelta
-from operator import itemgetter
 
 class App:
 
@@ -411,6 +412,8 @@ class IHM_commande:
 
 class IHM_passer_commande:
 
+    button_supprimer_exist = False
+    supprime_le_bouton = False
     _is_setup = False
     _root:tkinter
     _commande:Commande
@@ -506,11 +509,11 @@ class IHM_passer_commande:
         IHM_passer_commande.treeview_commande.column("prix_unitaire", anchor="center")
         IHM_passer_commande.treeview_commande.column("quantite", anchor="center")
         IHM_passer_commande.treeview_commande.column("prix_total", anchor="center")
-        IHM_passer_commande.treeview_commande.grid(row=2, column=4, columnspan=5, sticky="nsew", padx=2, pady=2)
+        IHM_passer_commande.treeview_commande.grid(row=2, column=4, columnspan=6, sticky="nsew", padx=2, pady=2)
 
         scrollbar_treeview_commande = Scrollbar(IHM_passer_commande.frame, orient="vertical", command=IHM_passer_commande.treeview_commande.yview)
         IHM_passer_commande.treeview_commande["yscrollcommand"] = scrollbar_treeview_commande.set
-        scrollbar_treeview_commande.grid(row=2, column=9, sticky="ns", padx=2, pady=2)
+        scrollbar_treeview_commande.grid(row=2, column=10, sticky="ns", padx=2, pady=2)
 
         #---Ligne 3
         label_titre_prix_commande = ttk.Label(IHM_passer_commande.frame, text="Prix de la commande :", style="sous_titre.TLabel")
@@ -520,29 +523,63 @@ class IHM_passer_commande:
         label_prix_commande = ttk.Label(IHM_passer_commande.frame, textvariable=IHM_passer_commande.stringvar_prix_commande, style="texte.TLabel")
         label_prix_commande.grid(row=3, column=5, sticky="w", padx=2, pady=2)
 
-        titre_bouton_accueil = ("Retourner à l'accueil" if IHM_passer_commande._is_setup else "Retour aux commandes")
-        button_retour_accueil = ttk.Button(IHM_passer_commande.frame, text=titre_bouton_accueil, command=IHM_passer_commande.tester_retour, style="bouton.TButton")
-        button_retour_accueil.grid(row=3, column=6, sticky="we", padx=2, pady=2)
+        button_retour_accueil = ttk.Button(IHM_passer_commande.frame, text="Retourner à l'accueil", command=IHM_passer_commande.tester_retour, style="bouton.TButton")
+        button_retour_accueil.grid(row=3, column=7, sticky="we", padx=2, pady=2)
 
-        button_reset_commande = ttk.Button(IHM_passer_commande.frame, text="Réinitialiser la commande", command=IHM_passer_commande.reset_commande, style="bouton.TButton")
-        button_reset_commande.grid(row=3, column=7, sticky="we", padx=2, pady=2)
+        button_reset_commande = ttk.Button(IHM_passer_commande.frame, text="Réinitialiser", command=IHM_passer_commande.reset_commande, style="bouton.TButton")
+        button_reset_commande.grid(row=3, column=8, sticky="we", padx=2, pady=2)
 
         button_sauvegarder = ttk.Button(IHM_passer_commande.frame, text="Sauvegarder", command=IHM_passer_commande.sauvegarder_commande, style="bouton.TButton")
-        button_sauvegarder.grid(row=3, column=8, sticky="we", padx=2, pady=2)
+        button_sauvegarder.grid(row=3, column=9, sticky="we", padx=2, pady=2)
 
         #On centre la fenêtre au milieu de l'écran
         self._root.geometry(center_window(self.frame))
 
         #Événements
         IHM_passer_commande.remplir_treeview_ouverture()
-        IHM_passer_commande.entry_search_bar.bind("<KeyRelease>", self.check)
+        IHM_passer_commande.entry_search_bar.bind("<KeyRelease>", self.chercher_produits)
         IHM_passer_commande.listbox_produit.bind('<<ListboxSelect>>', IHM_passer_commande.set_quantite)
         IHM_passer_commande.listbox_quantite.bind('<<ListboxSelect>>', IHM_passer_commande.inserer_produit)
+        IHM_passer_commande.treeview_commande.bind('<<TreeviewSelect>>', IHM_passer_commande.afficher_bouton_supprimer)
 
         #En cas de fermeture de la fenêtre
         IHM_passer_commande._root.protocol("WM_DELETE_WINDOW", IHM_passer_commande.tester_retour)
     
-    def check(*args):
+    def afficher_bouton_supprimer(*args):
+        
+        if IHM_passer_commande.button_supprimer_exist or IHM_passer_commande.supprime_le_bouton:
+            IHM_passer_commande.supprime_le_bouton = False
+            return
+
+        IHM_passer_commande.button_supprimer = ttk.Button(IHM_passer_commande.frame, text="Supprimer", 
+                                                          command=IHM_passer_commande.supprimer_produit, style="bouton.TButton")
+        IHM_passer_commande.button_supprimer.grid(row=3, column=6, sticky="we", padx=2, pady=2)
+        IHM_passer_commande.button_supprimer_exist = True
+
+    def supprimer_bouton_supprimer(*args):
+
+        IHM_passer_commande.button_supprimer.destroy()
+        IHM_passer_commande.supprime_le_bouton = True
+        IHM_passer_commande.button_supprimer_exist = False
+
+    def supprimer_produit():
+
+        liste_produit_suppr = []
+        for selected_item in IHM_passer_commande.treeview_commande.selection():
+            intitule_produit = IHM_passer_commande.treeview_commande.item(selected_item)["values"][0]
+            for (produit, quantite) in IHM_passer_commande._commande:
+                if produit.intitule == intitule_produit:
+                    liste_produit_suppr.append(produit)
+            IHM_passer_commande.treeview_commande.delete(selected_item)
+        for produit in liste_produit_suppr:
+            IHM_passer_commande._commande.ajouter_produit(produit, 0) #équivaut à supprimer le produit
+        IHM_passer_commande.stringvar_prix_commande.set(f"{IHM_passer_commande._commande.prix_total} euro{'' if IHM_passer_commande._commande.prix_total <= 1 else 's'}")
+        IHM_passer_commande.listbox_produit.selection_clear(0, 'end')
+        IHM_passer_commande.listbox_produit.select_set(0)
+        IHM_passer_commande.listbox_quantite.selection_clear(0, 'end')
+        IHM_passer_commande.set_quantite()
+
+    def chercher_produits(*args):
         
         valeur = IHM_passer_commande.entry_search_bar.get()
 
@@ -553,15 +590,15 @@ class IHM_passer_commande:
             for produit_intitule in IHM_passer_commande.liste_produit_intitule:
                 if valeur.lower() in produit_intitule.lower():
                     donnees.append(produit_intitule)
-        IHM_passer_commande.update(donnees)
+        IHM_passer_commande.afficher_produits(donnees)
 
-    def update(donnees):
+    def afficher_produits(donnees):
             IHM_passer_commande.listbox_produit.delete(0,END)
 
             for produit_intitule in donnees:
                 IHM_passer_commande.listbox_produit.insert(END, produit_intitule)
 
-    def remplir_treeview_ouverture(*args):
+    def remplir_treeview_ouverture():
         
         #Erreur si c'est la première fois que l'utilisateur veut passer une commande
         try:
@@ -580,8 +617,10 @@ class IHM_passer_commande:
         produit = IHM_passer_commande._liste_produit[index_produit]
         quantite = IHM_passer_commande.listbox_quantite.curselection()[0]
         
+        if IHM_passer_commande.button_supprimer_exist:
+            IHM_passer_commande.supprimer_bouton_supprimer()
+
         IHM_passer_commande._commande.ajouter_produit(produit, quantite)
-        
         IHM_passer_commande.remplir_treeview_commande()
         IHM_passer_commande.stringvar_prix_commande.set(f"{IHM_passer_commande._commande.prix_total} euro{'' if IHM_passer_commande._commande.prix_total <= 1 else 's'}")
 
@@ -650,7 +689,7 @@ class IHM_passer_commande:
         msg = messagebox.askquestion(f"Réinitialiser la commande", "Êtes-vous certain de vouloir réinitialiser la commande ?")
         if msg == "no":
             return
-            
+
         IHM_passer_commande.treeview_commande.delete(*IHM_passer_commande.treeview_commande.get_children())
         IHM_passer_commande._commande.vider()
         IHM_passer_commande.listbox_produit.selection_clear(0, 'end')
@@ -658,6 +697,9 @@ class IHM_passer_commande:
         IHM_passer_commande.listbox_quantite.selection_clear(0, 'end')
         IHM_passer_commande.listbox_quantite.select_set(0)
         IHM_passer_commande.stringvar_prix_commande.set("0 euro")
+
+        if IHM_passer_commande.button_supprimer_exist:
+            IHM_passer_commande.supprimer_bouton_supprimer()
 
     def tester_retour():
 
@@ -670,6 +712,7 @@ class IHM_passer_commande:
         
         IHM_passer_commande._commande.date_retrait = IHM_passer_commande.dateEntry_date_retrait.get_date()
         IHM_passer_commande.frame.destroy()
+        IHM_passer_commande.button_supprimer_exist = False
         IHM_accueil.launch_IHM_accueil()
 
     def retour_commande():
@@ -687,3 +730,14 @@ def center_window(frame:ttk):
     screen_width,screen_height = frame.winfo_screenwidth(), frame.winfo_screenheight()
     center_x, center_y = int(screen_width/2 - window_width / 2), int(screen_height/2 - window_height / 2)
     return f'{window_width}x{window_height}+{center_x}+{center_y}'
+
+"""
+Mail :
+
+ssl_context = ssl.create_default_context()
+serveur = smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl_context)
+serveur.login("driveprojetpython@gmail.com", "drivepython")
+serveur.sendmail("driveprojetpython@gmail.com", "florent.tornicelli4@etu.univ-lorraine.fr",
+"Subject: sujet test\nmail test")
+serveur.quit()
+"""
