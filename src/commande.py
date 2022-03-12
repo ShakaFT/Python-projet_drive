@@ -137,7 +137,7 @@ class Commande:
         
         :return: le prix total de la commande
         """
-        return sum( (key.prix*value for key, value in self._produit_quantite.items()) )
+        return round(sum( (key.prix*value for key, value in self._produit_quantite.items()) ), 2)
     
     def __len__(self) -> int:
         """ nombre de produits distincts dans la commande (on ne compte pas les doublons)

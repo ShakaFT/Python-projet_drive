@@ -8,7 +8,7 @@ from tkinter import ttk
 from tkcalendar import DateEntry
 import smtplib
 import ssl
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
 
 class App:
 
@@ -266,8 +266,9 @@ class IHM_voir_commande:
         
         for (id_commande, date_commande, date_retrait) in self.liste_commandes:
             liste_produits_commande = charger_produits_commande(id_commande)
-            valeurs = (id_commande, date_commande, date_retrait, len(liste_produits_commande),
-                      sum( (produit.prix*quantite for (produit, quantite) in liste_produits_commande) ))
+            nb_produit = sum( (quantite for (produit, quantite) in liste_produits_commande) )
+            prix_total = sum( (produit.prix*quantite for (produit, quantite) in liste_produits_commande) )
+            valeurs = (id_commande, date_commande.strftime('%d-%m-%Y'), date_retrait.strftime('%d-%m-%Y'), nb_produit, prix_total)
             self.treeview_commandes.insert("", "end", values=valeurs)
 
     def afficher_commande(self, *args):
@@ -373,7 +374,7 @@ class IHM_commande:
         self.prix_total = 0
         
         for (produit, quantite) in self.liste_produits_commande:
-            prix_total_produit = produit.prix*quantite
+            prix_total_produit = round(produit.prix*quantite, 2)
             self.prix_total += produit.prix*quantite
             valeurs = (produit.intitule, produit.prix, quantite, prix_total_produit)
             self.treeview_commande.insert("", "end", values=valeurs)
@@ -441,7 +442,7 @@ class IHM_passer_commande:
     def __init__(self):
 
         #Affectation variables
-        IHM_passer_commande._root.title(("Passer une commande" if IHM_passer_commande._is_setup is None else "Modifier votre commande"))
+        IHM_passer_commande._root.title(("Passer une commande" if IHM_passer_commande._is_setup == True else "Modifier votre commande"))
         IHM_passer_commande.liste_produit_intitule = [produit.intitule for produit in IHM_passer_commande._liste_produit]
 
         #Création des styles
@@ -523,8 +524,9 @@ class IHM_passer_commande:
         label_prix_commande = ttk.Label(IHM_passer_commande.frame, textvariable=IHM_passer_commande.stringvar_prix_commande, style="texte.TLabel")
         label_prix_commande.grid(row=3, column=5, sticky="w", padx=2, pady=2)
 
-        button_retour_accueil = ttk.Button(IHM_passer_commande.frame, text="Retourner à l'accueil", command=IHM_passer_commande.tester_retour, style="bouton.TButton")
-        button_retour_accueil.grid(row=3, column=7, sticky="we", padx=2, pady=2)
+        titre_button_retour = ("Retourner à l'accueil" if IHM_passer_commande._is_setup else "Retour")
+        button_retour = ttk.Button(IHM_passer_commande.frame, text=titre_button_retour, command=IHM_passer_commande.tester_retour, style="bouton.TButton")
+        button_retour.grid(row=3, column=7, sticky="we", padx=2, pady=2)
 
         button_reset_commande = ttk.Button(IHM_passer_commande.frame, text="Réinitialiser", command=IHM_passer_commande.reset_commande, style="bouton.TButton")
         button_reset_commande.grid(row=3, column=8, sticky="we", padx=2, pady=2)
@@ -556,7 +558,7 @@ class IHM_passer_commande:
         IHM_passer_commande.button_supprimer.grid(row=3, column=6, sticky="we", padx=2, pady=2)
         IHM_passer_commande.button_supprimer_exist = True
 
-    def supprimer_bouton_supprimer(*args):
+    def supprimer_bouton_supprimer():
 
         IHM_passer_commande.button_supprimer.destroy()
         IHM_passer_commande.supprime_le_bouton = True
@@ -578,6 +580,7 @@ class IHM_passer_commande:
         IHM_passer_commande.listbox_produit.select_set(0)
         IHM_passer_commande.listbox_quantite.selection_clear(0, 'end')
         IHM_passer_commande.set_quantite()
+        IHM_passer_commande.supprimer_bouton_supprimer()
 
     def chercher_produits(*args):
         
@@ -622,7 +625,7 @@ class IHM_passer_commande:
 
         IHM_passer_commande._commande.ajouter_produit(produit, quantite)
         IHM_passer_commande.remplir_treeview_commande()
-        IHM_passer_commande.stringvar_prix_commande.set(f"{IHM_passer_commande._commande.prix_total} euro{'' if IHM_passer_commande._commande.prix_total <= 1 else 's'}")
+        IHM_passer_commande.stringvar_prix_commande.set(f"{IHM_passer_commande._commande.prix_total}euro{'' if IHM_passer_commande._commande.prix_total <= 1 else 's'}")
 
     def remplir_treeview_commande():
 
@@ -631,7 +634,7 @@ class IHM_passer_commande:
         for (produit, quantite) in sorted([(produit, quantite) for (produit, quantite) in IHM_passer_commande._commande], \
                                             key=lambda t: t[0].intitule):
             valeurs = (produit.intitule, produit.prix,
-                       quantite, produit.prix*quantite)
+                       quantite, round(produit.prix*quantite, 2))
             IHM_passer_commande.treeview_commande.insert("", "end", values=valeurs)
 
     def set_quantite(*args):
@@ -667,6 +670,7 @@ class IHM_passer_commande:
             return
 
         sauvegarder_ajout_commande(IHM_passer_commande._commande)
+        send_mail(IHM_passer_commande._commande)
         messagebox.showinfo("Youpi !", "Votre commande a bien été ajoutée !")
         IHM_passer_commande._is_setup = False
         IHM_passer_commande.retour_accueil()
@@ -731,13 +735,33 @@ def center_window(frame:ttk):
     center_x, center_y = int(screen_width/2 - window_width / 2), int(screen_height/2 - window_height / 2)
     return f'{window_width}x{window_height}+{center_x}+{center_y}'
 
-"""
-Mail :
+def send_mail(commande:Commande):
+    ssl_context = ssl.create_default_context()
+    serveur = smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl_context)
+    serveur.login("driveprojetpython@gmail.com", "drivepython")
+    sujet_mail = "Récapitulatif de la commande"
+    contenu_commande = ""
+    for (produit, quantite) in commande:
+        #on change le format des dates
+        date_commande_split = commande.date_commande.split("-")
+        date_commande = date(int(date_commande_split[0]), int(date_commande_split[1]), int(date_commande_split[2])).strftime("%d-%m-%Y")
+        date_retrait_split = commande.date_retrait.split("-")
+        date_retrait = date(int(date_retrait_split[0]), int(date_retrait_split[1]), int(date_retrait_split[2])).strftime("%d-%m-%Y")
+        
+        contenu_commande += f"- {quantite} {produit.intitule} : {round(produit.prix*quantite, 2)}€\n"
+    contenu_mail = f"""
+Vous avez effectué votre commande le {date_commande} à {datetime.now().strftime("%H:%M").replace(":","h")}.
 
-ssl_context = ssl.create_default_context()
-serveur = smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl_context)
-serveur.login("driveprojetpython@gmail.com", "drivepython")
-serveur.sendmail("driveprojetpython@gmail.com", "florent.tornicelli4@etu.univ-lorraine.fr",
-"Subject: sujet test\nmail test")
-serveur.quit()
-"""
+Vous avez commandé :
+{contenu_commande}
+Total : {commande.prix_total}€
+
+N'oubliez pas de venir la retirer le {date_retrait}.
+
+Merci pour votre confiance !
+À bientôt !
+
+Votre application drive préférée
+    """
+    serveur.sendmail("driveprojetpython@gmail.com", commande.mail_client, f"Subject: {sujet_mail}\n{contenu_mail}".encode("utf-8"))
+    serveur.quit()
