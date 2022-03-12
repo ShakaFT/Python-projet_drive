@@ -738,7 +738,7 @@ def center_window(frame:ttk):
 def send_mail(commande:Commande):
     ssl_context = ssl.create_default_context()
     serveur = smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl_context)
-    serveur.login("driveprojetpython@gmail.com", "drivepython")
+    serveur.login("", "")
     sujet_mail = "Récapitulatif de la commande"
     contenu_commande = ""
     for (produit, quantite) in commande:
@@ -747,7 +747,7 @@ def send_mail(commande:Commande):
         date_commande = date(int(date_commande_split[0]), int(date_commande_split[1]), int(date_commande_split[2])).strftime("%d-%m-%Y")
         date_retrait_split = commande.date_retrait.split("-")
         date_retrait = date(int(date_retrait_split[0]), int(date_retrait_split[1]), int(date_retrait_split[2])).strftime("%d-%m-%Y")
-        
+
         contenu_commande += f"- {quantite} {produit.intitule} : {round(produit.prix*quantite, 2)}€\n"
     contenu_mail = f"""
 Vous avez effectué votre commande le {date_commande} à {datetime.now().strftime("%H:%M").replace(":","h")}.
@@ -763,5 +763,5 @@ Merci pour votre confiance !
 
 Votre application drive préférée
     """
-    serveur.sendmail("driveprojetpython@gmail.com", commande.mail_client, f"Subject: {sujet_mail}\n{contenu_mail}".encode("utf-8"))
+    serveur.sendmail("", commande.mail_client, f"Subject: {sujet_mail}\n{contenu_mail}".encode("utf-8"))
     serveur.quit()

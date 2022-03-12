@@ -10,7 +10,7 @@ from commande import Commande
 def creer_connexion(): #-> connexion
     
     try:
-        connexion = m.connect(host="devbdd.iutmetz.univ-lorraine.fr", user="tornicel3u_appli", password="32016359", database="tornicel3u_Drive")
+        connexion = m.connect(host="", user="", password="", database="")
     except m.Error as err:
         
         if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
